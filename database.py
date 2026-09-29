@@ -29,6 +29,7 @@ def init_db():
 
         CREATE TABLE IF NOT EXISTS books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book_code TEXT,
             isbn TEXT,
             title TEXT NOT NULL,
             author TEXT,
@@ -65,6 +66,8 @@ def init_db():
         );
         """)
         book_columns = {row[1] for row in conn.execute("PRAGMA table_info(books)")}
+        if "book_code" not in book_columns:
+            conn.execute("ALTER TABLE books ADD COLUMN book_code TEXT")
         if "summary" not in book_columns:
             conn.execute("ALTER TABLE books ADD COLUMN summary TEXT")
 

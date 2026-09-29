@@ -89,14 +89,14 @@ class LoansScreen(BaseScreen):
         ttk.Button(buttons,text="נקה",command=self.clear).pack(side="right",padx=5)
         ttk.Button(buttons,text="מחק",command=self.delete).pack(side="right",padx=5)
 
-        cols=["id","book_title","member_no","user_name","loan_date","due_date",
+        cols=["book_title","member_no","user_name","loan_date","due_date",
               "return_date","status","notes"]
         table=tk.Frame(self); table.pack(fill="both",expand=True,padx=20,pady=8)
         self.tree=ttk.Treeview(table,columns=cols,show="headings")
-        heads={"id":"ID","book_title":"ספר","member_no":"מספר חבר","user_name":"משתמש",
+        heads={"book_title":"ספר","member_no":"מספר חבר","user_name":"משתמש",
                "loan_date":"תאריך השאלה","due_date":"להחזיר עד",
                "return_date":"הוחזר","status":"סטטוס","notes":"הערות"}
-        widths={"id":50,"book_title":220,"member_no":100,"user_name":170,
+        widths={"book_title":220,"member_no":100,"user_name":170,
                 "loan_date":105,"due_date":105,"return_date":105,"status":90,"notes":180}
         for c in cols:
             self.tree.heading(c,text=heads[c],anchor="e"); self.tree.column(c,width=widths[c],anchor="e")
@@ -133,9 +133,12 @@ class LoansScreen(BaseScreen):
     def refresh(self):
         if not hasattr(self,"tree"): return
         self.tree.delete(*self.tree.get_children())
-        for r in self.repo.list(self.user_search.get(),self.book_search.get()):
-            self.tree.insert("", "end",values=[
-                r["id"],r["book_title"],r["member_no"],
+        selected_user_id=self.user_map.get(self.user_var.get())
+        selected_book_id=self.book_map.get(self.book_var.get())
+        user_id=selected_user_id if selected_book_id is None else None
+        for r in self.repo.list(self.user_search.get(),self.book_search.get(),user_id=user_id):
+            self.tree.insert("", "end",iid=str(r["id"]),values=[
+                r["book_title"],r["member_no"],
                 f'{r["first_name"]} {r["last_name"]}',
                 r["loan_date"],r["due_date"],r["return_date"],
                 r["status"],r["notes"]])
@@ -143,7 +146,7 @@ class LoansScreen(BaseScreen):
     def select(self,event=None):
         s=self.tree.selection()
         if not s:return
-        self.selected=int(self.tree.item(s[0],"values")[0])
+        self.selected=int(s[0])
         r=self.repo.get(self.selected)
         if not r:return
         self.set_book(r["book_id"]); self.set_user(r["user_id"])

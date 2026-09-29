@@ -2,7 +2,7 @@ from .base_model import Model
 
 class Book(Model):
     table = "books"
-    fields = ("id","isbn","title","author","publisher","year",
+    fields = ("id","book_code","isbn","title","author","publisher","year",
               "category","copies","available_copies","notes","summary")
 
     @property

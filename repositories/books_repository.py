@@ -1,18 +1,21 @@
 from database import get_connection
 
 class BooksRepository:
-    fields=("isbn","title","author","publisher","year","category","copies",
+    fields=("book_code","isbn","title","author","publisher","year","category","copies",
             "available_copies","notes","summary")
 
-    def list(self,title="",author=""):
+    def list(self,title="",author="",book_code=""):
         title_search=f"%{title}%"
         author_search=f"%{author}%"
+        book_code_search=f"%{book_code}%"
         with get_connection() as c:
             return c.execute("""
             SELECT * FROM books
-            WHERE title LIKE ? AND author LIKE ?
+                        WHERE COALESCE(title,'') LIKE ?
+                            AND COALESCE(author,'') LIKE ?
+                            AND COALESCE(book_code,'') LIKE ?
             ORDER BY title
-            """,(title_search,author_search)).fetchall()
+            """,(title_search,author_search,book_code_search)).fetchall()
 
     def get(self,book_id):
         with get_connection() as c:
@@ -21,13 +24,13 @@ class BooksRepository:
     def save(self,data,book_id=None):
         with get_connection() as c:
             if book_id:
-                c.execute("""UPDATE books SET isbn=?,title=?,author=?,publisher=?,year=?,
+                c.execute("""UPDATE books SET book_code=?,isbn=?,title=?,author=?,publisher=?,year=?,
                     category=?,copies=?,available_copies=?,notes=?,summary=? WHERE id=?""",
                     (*data,book_id))
             else:
                 c.execute("""INSERT INTO books
-                    (isbn,title,author,publisher,year,category,copies,available_copies,notes,summary)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)""",data)
+                    (book_code,isbn,title,author,publisher,year,category,copies,available_copies,notes,summary)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?)""",data)
 
     def delete(self,book_id):
         with get_connection() as c:

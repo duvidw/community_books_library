@@ -35,3 +35,8 @@ screens/users.py        – משתמשים
 screens/books.py        – ספרים
 screens/loans.py        – השאלות
 screens/reservations.py – הזמנות
+
+2026-09-28 David:
+* לטבלת ספרים הוסף קוד_ספר לפני ISBN
+כמו כן הוסף את קוד_ספר לפרטי הספר
+

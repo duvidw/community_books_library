@@ -29,9 +29,9 @@ class ReservationsScreen(BaseScreen):
         b=tk.Frame(form,bg="#f3f4f6");b.grid(row=3,column=0,columnspan=4)
         ttk.Button(b,text="שמור",command=self.save).pack(side="right",padx=4)
         ttk.Button(b,text="מחק",command=self.delete).pack(side="right",padx=4)
-        cols=["id","book_title","member_no","user_name"]+[x[0] for x in FIELDS]
+        cols=["book_title","member_no","user_name"]+[x[0] for x in FIELDS]
         self.tree=ttk.Treeview(self,columns=cols,show="headings")
-        heads={"id":"ID","book_title":"ספר","member_no":"מספר חבר","user_name":"משתמש",**dict(FIELDS)}
+        heads={"book_title":"ספר","member_no":"מספר חבר","user_name":"משתמש",**dict(FIELDS)}
         for c in cols:
             self.tree.heading(c,text=heads[c],anchor="e");self.tree.column(c,width=100,anchor="e")
         self.tree.pack(fill="both",expand=True,padx=20,pady=8);self.tree.bind("<<TreeviewSelect>>",self.select)
@@ -40,14 +40,14 @@ class ReservationsScreen(BaseScreen):
         if not hasattr(self,"tree"):return
         self.tree.delete(*self.tree.get_children())
         for r in self.repo.list(self.search.get()):
-            vals=[r["id"],r["book_title"],r["member_no"],f'{r["first_name"]} {r["last_name"]}']+[r[k] for k,_ in FIELDS]
-            self.tree.insert("", "end",values=vals)
+            vals=[r["book_title"],r["member_no"],f'{r["first_name"]} {r["last_name"]}']+[r[k] for k,_ in FIELDS]
+            self.tree.insert("", "end",iid=str(r["id"]),values=vals)
 
     def select(self,e=None):
         s=self.tree.selection()
         if not s:return
-        v=self.tree.item(s[0],"values");self.selected=int(v[0])
-        for i,(k,_) in enumerate(FIELDS,4):
+        v=self.tree.item(s[0],"values");self.selected=int(s[0])
+        for i,(k,_) in enumerate(FIELDS,3):
             self.e[k].delete(0,"end");self.e[k].insert(0,v[i] if v[i] is not None else "")
 
     def clear(self):

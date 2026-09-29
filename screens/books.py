@@ -4,11 +4,11 @@ from repositories.books_repository import BooksRepository
 from csv_utils import export_rows,import_rows
 from .base_screen import BaseScreen
 
-FIELDS=[("isbn","ISBN"),("title","שם הספר"),("author","מחבר"),("publisher","הוצאה"),
+FIELDS=[("book_code","קוד_ספר"),("isbn","ISBN"),("title","שם הספר"),("author","מחבר"),("publisher","הוצאה"),
 ("year","שנה"),("category","קטגוריה"),("copies","עותקים"),("available_copies","זמינים"),
 ("notes","הערות"),("summary","תקציר")]
-FORM_LAYOUT=[("summary","isbn"),("title","author"),("publisher","year"),
-("category","copies"),("available_copies","notes")]
+FORM_LAYOUT=[("summary","book_code"),("isbn","title"),("author","publisher"),("year","category"),
+("copies","available_copies"),("notes",)]
 COLUMN_FIELDS=FIELDS[:-1]
 CATEGORY_OPTIONS=("נוער","מבוגרים","עיון","אנגלית")
 SUMMARY_MAX_LENGTH=1000
@@ -27,6 +27,9 @@ class BooksScreen(BaseScreen):
         tk.Label(bar,text="חיפוש לפי מחבר:",bg="#f3f4f6").pack(side="right")
         self.author_search=tk.Entry(bar,width=18);self.author_search.pack(side="right",padx=7)
         self.author_search.bind("<KeyRelease>",lambda e:self.refresh())
+        tk.Label(bar,text="חיפוש לפי קוד_ספר:",bg="#f3f4f6").pack(side="right")
+        self.book_code_search=tk.Entry(bar,width=18);self.book_code_search.pack(side="right",padx=7)
+        self.book_code_search.bind("<KeyRelease>",lambda e:self.refresh())
         for t,c in [("ספר חדש",self.clear),("Import CSV",self.imp),("Export CSV",self.exp)]:
             ttk.Button(bar,text=t,command=c).pack(side="right",padx=4)
         form=tk.LabelFrame(self,text="פרטי ספר",bg="#f3f4f6",labelanchor="ne");form.pack(fill="x",padx=20,pady=8)
@@ -49,21 +52,25 @@ class BooksScreen(BaseScreen):
         ttk.Button(b,text="מחק",command=self.delete).pack(side="right",padx=4)
         self.selected_label=tk.Label(b,text="לא נבחר ספר",bg="#f3f4f6")
         self.selected_label.pack(side="left",padx=12)
-        cols=["id"]+[x[0] for x in COLUMN_FIELDS];self.tree=ttk.Treeview(self,columns=cols,show="headings")
+        cols=[x[0] for x in COLUMN_FIELDS];self.tree=ttk.Treeview(self,columns=cols,show="headings")
         for col in cols:
-            self.tree.heading(col,text={"id":"ID",**dict(COLUMN_FIELDS)}[col],anchor="e")
+            self.tree.heading(col,text=dict(COLUMN_FIELDS)[col],anchor="e")
             self.tree.column(col,width=100,anchor="e")
         self.tree.pack(fill="both",expand=True,padx=20,pady=8);self.tree.bind("<<TreeviewSelect>>",self.select)
 
     def refresh(self):
         if not hasattr(self,"tree"):return
         self.tree.delete(*self.tree.get_children())
-        for r in self.repo.list(self.title_search.get(),self.author_search.get()):self.tree.insert("", "end",values=[r["id"]]+[r[k] for k,_ in COLUMN_FIELDS])
+        title=self.title_search.get().strip()
+        author=self.author_search.get().strip()
+        book_code=self.book_code_search.get().strip()
+        rows=self.repo.list(title,author,book_code) if any((title,author,book_code)) else self.repo.list()
+        for r in rows:self.tree.insert("", "end",iid=str(r["id"]),values=[r[k] for k,_ in COLUMN_FIELDS])
 
     def select(self,e=None):
         s=self.tree.selection()
         if not s:return
-        v=self.tree.item(s[0],"values");self.selected=int(v[0])
+        v=self.tree.item(s[0],"values");self.selected=int(s[0])
         self.selected_label.config(text=f"ספר נבחר: {self.selected} | {v[2]}")
         book=self.repo.get(self.selected)
         for k,_ in FIELDS:self.set_field(k,book[k] if book[k] is not None else "")
@@ -77,8 +84,8 @@ class BooksScreen(BaseScreen):
     def save(self):
         d=[self.get_field(k).strip() for k,_ in FIELDS]
         try:
-            d[4]=int(d[4]) if d[4] else None;d[6]=int(d[6] or 1);d[7]=int(d[7] or d[6])
-            if not d[1]:raise ValueError("יש להזין שם ספר.")
+            d[5]=int(d[5]) if d[5] else None;d[7]=int(d[7] or 1);d[8]=int(d[8] or d[7])
+            if not d[2]:raise ValueError("יש להזין שם ספר.")
             self.repo.save(d,self.selected);self.refresh();self.clear()
         except Exception as e:messagebox.showerror("שגיאה",str(e))
 
@@ -99,8 +106,8 @@ class BooksScreen(BaseScreen):
             with self.import_progress(len(records)) as update_progress:
                 for index,r in enumerate(records,1):
                     d=[r.get(k,"") for k,_ in FIELDS]
-                    d[4]=int(d[4]) if d[4] else None;d[6]=int(d[6] or 1);d[7]=int(d[7] or d[6])
-                    if d[1]:self.repo.save(d)
+                    d[5]=int(d[5]) if d[5] else None;d[7]=int(d[7] or 1);d[8]=int(d[8] or d[7])
+                    if d[2]:self.repo.save(d)
                     update_progress(index)
             self.refresh()
         except Exception as e:messagebox.showerror("Import",str(e))

@@ -35,30 +35,41 @@ class UsersScreen(BaseScreen):
         b=tk.Frame(form,bg="#f3f4f6"); b.grid(row=5,column=0,columnspan=4,pady=6)
         ttk.Button(b,text="שמור",command=self.save).pack(side="right",padx=4)
         ttk.Button(b,text="מחק",command=self.delete).pack(side="right",padx=4)
+        self.selected_label=tk.Label(b,text="לא נבחר משתמש",bg="#f3f4f6")
+        self.selected_label.pack(side="left",padx=12)
 
-        cols=["id"]+[x[0] for x in FIELDS]
+        cols=[x[0] for x in FIELDS]
         self.tree=ttk.Treeview(self,columns=cols,show="headings")
         for col in cols:
-            self.tree.heading(col,text={"id":"ID",**dict(FIELDS)}[col],anchor="e")
+            self.tree.heading(col,text=dict(FIELDS)[col],anchor="e")
             self.tree.column(col,width=100,anchor="e")
         self.tree.pack(fill="both",expand=True,padx=20,pady=8)
         self.tree.bind("<<TreeviewSelect>>",self.select)
+        self.tree.bind("<Double-1>",self.open_loans)
 
     def refresh(self):
         if not hasattr(self,"tree"): return
         self.tree.delete(*self.tree.get_children())
         for row in self.repo.list(self.search.get()):
-            self.tree.insert("", "end",values=[row["id"]]+[row[x[0]] for x in FIELDS])
+            self.tree.insert("", "end",iid=str(row["id"]),values=[row[x[0]] for x in FIELDS])
 
     def select(self,e=None):
         s=self.tree.selection()
         if not s:return
-        v=self.tree.item(s[0],"values"); self.selected=int(v[0])
-        for i,(k,_) in enumerate(FIELDS,1):
+        v=self.tree.item(s[0],"values"); self.selected=int(s[0])
+        self.selected_label.config(text=f"משתמש נבחר: {self.selected} | {v[1]} {v[2]}")
+        for i,(k,_) in enumerate(FIELDS):
             self.entries[k].delete(0,"end"); self.entries[k].insert(0,"" if v[i] is None else v[i])
+
+    def open_loans(self,event=None):
+        s=self.tree.selection()
+        if not s:return
+        self.selected=int(s[0])
+        if self.navigate:self.navigate("loans")
 
     def clear(self):
         self.selected=None
+        self.selected_label.config(text="לא נבחר משתמש")
         for e in self.entries.values():e.delete(0,"end")
         self.entries["join_date"].insert(0,date.today().isoformat())
         self.entries["active"].insert(0,"1")

@@ -18,21 +18,28 @@ class LoansRepository:
             ORDER BY date(l.due_date), b.title
             """).fetchall()
 
-    def list(self, user_name="", book_title=""):
+    def list(self, user_name="", book_title="", user_id=None, book_id=None):
         user_search=f"%{user_name}%"
         book_search=f"%{book_title}%"
         with get_connection() as c:
-            return c.execute("""
+            conditions=["(u.first_name || ' ' || u.last_name) LIKE ?", "b.title LIKE ?"]
+            params=[user_search,book_search]
+            if user_id is not None:
+                conditions.append("l.user_id=?")
+                params.append(user_id)
+            if book_id is not None:
+                conditions.append("l.book_id=?")
+                params.append(book_id)
+            return c.execute(f"""
             SELECT l.*, b.title AS book_title, b.isbn AS book_isbn,
                    b.available_copies,
                    u.member_no, u.first_name, u.last_name
             FROM loans l
             JOIN books b ON b.id=l.book_id
             JOIN users u ON u.id=l.user_id
-            WHERE (u.first_name || ' ' || u.last_name) LIKE ?
-              AND b.title LIKE ?
+            WHERE {' AND '.join(conditions)}
             ORDER BY l.id DESC
-            """,(user_search,book_search)).fetchall()
+            """,params).fetchall()
 
     def get(self, loan_id):
         with get_connection() as c:
