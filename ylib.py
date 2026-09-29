@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import ctypes
+import json
 import sys
 from pathlib import Path
 from database import init_db
@@ -10,6 +11,7 @@ from screens.books import BooksScreen
 from screens.loans import LoansScreen
 from screens.reservations import ReservationsScreen
 from screens.overdue import OverdueScreen
+from screens.settings import SettingsScreen
 
 class LibraryApp(tk.Tk):
     def __init__(self):
@@ -25,8 +27,37 @@ class LibraryApp(tk.Tk):
         init_db()
         self.selected_book_id=None
         self.selected_user_id=None
+        self.setup_path=self.get_setup_path()
+        self.load_setup()
         self.build_navigation()
+        self.set_console_visible(self.console_visible)
         self.show("dashboard")
+
+    def get_setup_path(self):
+        if getattr(sys,"frozen",False):
+            return Path(sys.executable).with_name("setup.json")
+        return Path(__file__).with_name("setup.json")
+
+    def load_setup(self):
+        self.reservations_visible=False
+        self.console_visible=False
+        try:
+            with self.setup_path.open("r",encoding="utf-8") as setup_file:
+                setup=json.load(setup_file)
+            self.reservations_visible=bool(setup.get("reservations_visible",False))
+            self.console_visible=bool(setup.get("console_visible",False))
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    def save_setup(self):
+        setup={
+            "reservations_visible":self.reservations_visible,
+            "console_visible":self.console_visible}
+        try:
+            with self.setup_path.open("w",encoding="utf-8") as setup_file:
+                json.dump(setup,setup_file,ensure_ascii=False,indent=2)
+        except OSError:
+            pass
 
     def build_navigation(self):
         self.nav=tk.Frame(self,bg="#1f2937",width=220)
@@ -43,27 +74,43 @@ class LibraryApp(tk.Tk):
             ("👥  משתמשים","users"),
             ("📚  ספרים","books"),
             ("📖  השאלות","loans"),
-            ("⚠  איחורים","overdue"),
-            ("📌  הזמנות","reservations")]
+            ("⚠  איחורים","overdue")]
         for text,key in items:
             ttk.Button(self.nav,text=text,command=lambda k=key:self.show(k)).pack(
                 fill="x",padx=15,pady=6)
-        self.console_visible = True
-        self.console_button = ttk.Button(
-            self.nav, text="🖥 הסתר מסוף", command=self.toggle_console)
-        self.console_button.pack(side="bottom", fill="x", padx=15, pady=15)
+        self.reservations_button=ttk.Button(
+            self.nav,text="📌  הזמנות",command=lambda:self.show("reservations"))
+        self.show_reservations_button()
+        ttk.Button(self.nav,text="⚙  הגדרות",command=lambda:self.show("settings")).pack(
+            side="bottom",fill="x",padx=15,pady=15)
         self.content=tk.Frame(self,bg="#f3f4f6")
         self.content.pack(side="left",fill="both",expand=True)
 
+    def show_reservations_button(self):
+        if self.reservations_visible:
+            self.reservations_button.pack(fill="x",padx=15,pady=6)
+        else:
+            self.reservations_button.pack_forget()
+
+    def toggle_reservations(self):
+        self.reservations_visible=not self.reservations_visible
+        self.show_reservations_button()
+
     def toggle_console(self):
+        self.set_console_visible(not self.console_visible)
+
+    def set_console_visible(self,visible):
+        self.console_visible=visible
         console_window = ctypes.windll.kernel32.GetConsoleWindow()
         if not console_window:
             return
 
-        self.console_visible = not self.console_visible
         ctypes.windll.user32.ShowWindow(console_window, 5 if self.console_visible else 0)
-        self.console_button.configure(
-            text="🖥 הסתר מסוף" if self.console_visible else "🖥 הצג מסוף")
+
+    def restore_setup(self,reservations_visible,console_visible):
+        self.reservations_visible=reservations_visible
+        self.show_reservations_button()
+        self.set_console_visible(console_visible)
 
     def show(self,key):
         current_screens=self.content.winfo_children()
@@ -76,6 +123,16 @@ class LibraryApp(tk.Tk):
             "dashboard":DashboardScreen,"users":UsersScreen,"books":BooksScreen,
             "loans":LoansScreen,"reservations":ReservationsScreen}
         classes["overdue"] = OverdueScreen
+        if key=="settings":
+            SettingsScreen(
+                self.content,self.show,
+                get_reservations_visible=lambda:self.reservations_visible,
+                toggle_reservations=self.toggle_reservations,
+                get_console_visible=lambda:self.console_visible,
+                toggle_console=self.toggle_console,
+                save_setup=self.save_setup,
+                restore_setup=self.restore_setup).pack(fill="both",expand=True)
+            return
         if key=="loans":
             LoansScreen(self.content,self.show,selected_book_id=self.selected_book_id,
                         selected_user_id=self.selected_user_id).pack(fill="both",expand=True)

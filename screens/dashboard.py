@@ -27,7 +27,6 @@ class DashboardScreen(BaseScreen):
                      anchor="e",justify="right").pack(fill="x",padx=12,pady=5)
             tk.Label(card,text=str(value),bg="white",
                      font=("Arial",28,"bold"),anchor="e",justify="right").pack(fill="x",padx=12)
-
     def counts(self):
         books=fetchone("SELECT COALESCE(SUM(copies),0) n FROM books")["n"]
         users=fetchone("SELECT COUNT(*) n FROM users WHERE active=1")["n"]
